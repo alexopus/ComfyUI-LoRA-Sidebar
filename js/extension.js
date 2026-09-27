@@ -18,16 +18,12 @@ const EDITING_SETTING = 'Lora Sidebar.Allow Editing';
 const SORT_SETTING = 'Lora Sidebar.Sort Order';
 const FILTER_DELAY_MS = 150;
 
-// Toolbar button look per sort order; clicking cycles through SORT_ORDERS
-const SORT_BUTTONS = {
-    'name': { icon: 'pi pi-sort-alpha-down', label: 'Sorted by name' },
-    'size-desc': { icon: 'pi pi-sort-amount-down', label: 'Sorted by size, largest first' },
-    'size-asc': { icon: 'pi pi-sort-amount-up-alt', label: 'Sorted by size, smallest first' }
+// Icon and label per sort order, for the toolbar dropdown and the setting
+const SORT_OPTIONS = {
+    'name': { icon: 'pi pi-sort-alpha-down', label: 'Name' },
+    'size-desc': { icon: 'pi pi-sort-amount-down', label: 'Size, largest first' },
+    'size-asc': { icon: 'pi pi-sort-amount-up-alt', label: 'Size, smallest first' }
 };
-
-function nextSort(sort) {
-    return SORT_ORDERS[(SORT_ORDERS.indexOf(sort) + 1) % SORT_ORDERS.length];
-}
 
 class LoraSidebar {
     constructor() {
@@ -37,6 +33,7 @@ class LoraSidebar {
         this.filterInput = null;
         this.authorTags = null;
         this.sortButton = null;
+        this.sortMenu = null;
         this.grid = null;
         this.filterTimer = null;
         this.isInitialized = false;
@@ -55,7 +52,7 @@ class LoraSidebar {
             this.renderBreadcrumb();
         }
         if (updates.sort !== undefined) {
-            this.renderSortButton();
+            this.renderSortControl();
         }
 
         // Starting a load only changes the view when there's nothing to show yet ("Loading...");
@@ -104,7 +101,7 @@ class LoraSidebar {
 
         this.updateCardSize();
         this.renderBreadcrumb();
-        this.renderSortButton();
+        this.renderSortControl();
         this.renderGrid();
     }
 
@@ -123,22 +120,54 @@ class LoraSidebar {
         zoomButtonGroup.appendChild(this.createButton('pi pi-search-minus', 'Smaller cards', () => this.zoomOut()));
         zoomButtonGroup.appendChild(this.createButton('pi pi-search-plus', 'Larger cards', () => this.zoomIn()));
 
-        const sortButtonGroup = document.createElement('div');
-        sortButtonGroup.className = 'lora-button-group';
-        this.sortButton = this.createButton('', '', () => this.cycleSort());
-        sortButtonGroup.appendChild(this.sortButton);
-
         const refreshButtonGroup = document.createElement('div');
         refreshButtonGroup.className = 'lora-button-group';
         refreshButtonGroup.appendChild(this.createButton('pi pi-refresh', 'Refresh', () => this.loadLoras()));
 
-        rightControls.appendChild(sortButtonGroup);
+        rightControls.appendChild(this.createSortControl());
         rightControls.appendChild(zoomButtonGroup);
         rightControls.appendChild(refreshButtonGroup);
 
         toolbar.appendChild(this.breadcrumb);
         toolbar.appendChild(rightControls);
         parent.appendChild(toolbar);
+    }
+
+    // Button showing the current sort order, opening a dropdown with every order
+    createSortControl() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'lora-sort';
+
+        const group = document.createElement('div');
+        group.className = 'lora-button-group';
+        this.sortButton = this.createButton('', '', () => this.toggleSortMenu());
+        this.sortButton.classList.add('lora-sort-btn');
+        group.appendChild(this.sortButton);
+
+        this.sortMenu = document.createElement('div');
+        this.sortMenu.className = 'lora-sort-menu';
+        this.sortMenu.hidden = true;
+        for (const [value, { icon, label }] of Object.entries(SORT_OPTIONS)) {
+            const item = document.createElement('button');
+            item.className = 'lora-sort-item';
+            item.dataset.sort = value;
+            item.innerHTML = `<i class="${icon}"></i>`;
+            item.append(label);
+            item.onclick = () => this.selectSort(value);
+            this.sortMenu.appendChild(item);
+        }
+
+        // Close on a click elsewhere or Escape
+        document.addEventListener('pointerdown', (event) => {
+            if (!wrapper.contains(event.target)) this.toggleSortMenu(false);
+        });
+        wrapper.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') this.toggleSortMenu(false);
+        });
+
+        wrapper.appendChild(group);
+        wrapper.appendChild(this.sortMenu);
+        return wrapper;
     }
 
     createButton(iconClass, title, onClick) {
@@ -271,18 +300,24 @@ class LoraSidebar {
         }
     }
 
-    renderSortButton() {
+    renderSortControl() {
         if (!this.sortButton) return;
         const sort = this.store.state.sort;
-        const next = nextSort(sort);
-        this.sortButton.innerHTML = `<i class="${SORT_BUTTONS[sort].icon}"></i>`;
-        this.sortButton.title = `${SORT_BUTTONS[sort].label} (click: ${SORT_BUTTONS[next].label.toLowerCase()})`;
+        this.sortButton.innerHTML = `<i class="${SORT_OPTIONS[sort].icon}"></i><i class="pi pi-chevron-down lora-sort-chevron"></i>`;
+        this.sortButton.title = `Sort: ${SORT_OPTIONS[sort].label}`;
+        for (const item of this.sortMenu.children) {
+            item.classList.toggle('active', item.dataset.sort === sort);
+        }
     }
 
-    cycleSort() {
-        const next = nextSort(this.store.state.sort);
-        this.store.setSort(next);
-        app.extensionManager.setting.set(SORT_SETTING, next);
+    toggleSortMenu(open = this.sortMenu.hidden) {
+        if (this.sortMenu) this.sortMenu.hidden = !open;
+    }
+
+    selectSort(sort) {
+        this.toggleSortMenu(false);
+        this.store.setSort(sort);
+        app.extensionManager.setting.set(SORT_SETTING, sort);
     }
 
     renderAuthorTags(viewLoras) {
@@ -576,7 +611,7 @@ app.registerExtension({
             id: SORT_SETTING,
             name: "LoRA sort order",
             type: "combo",
-            options: SORT_ORDERS.map(value => ({ text: SORT_BUTTONS[value].label, value })),
+            options: SORT_ORDERS.map(value => ({ text: SORT_OPTIONS[value].label, value })),
             defaultValue: 'name',
             // Fires for the toolbar button and for edits in the Settings dialog
             onChange: (newValue) => loraSidebar.store.setSort(newValue)

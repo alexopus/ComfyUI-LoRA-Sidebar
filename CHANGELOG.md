@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 - 2026-09-27
+
+### Changed
+- The sort button now opens a dropdown listing each order with its icon and name, instead of cycling through the orders on each click. The button shows the current order's icon.
+
 ## 0.2.0 - 2026-09-27
 
 ### Added
