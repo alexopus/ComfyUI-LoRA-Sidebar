@@ -4,7 +4,7 @@ import { LoraApi } from "../api/loraApi.js";
 const LORA_TYPES = ['LORA', 'LoCon', 'DoRA'];
 
 // e.g. "218 MB", "1.6 GB"
-function formatSize(bytes) {
+export function formatSize(bytes) {
     const mb = bytes / (1024 * 1024);
     if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
     return mb >= 10 ? `${Math.round(mb)} MB` : `${mb.toFixed(1)} MB`;

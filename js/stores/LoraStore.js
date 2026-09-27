@@ -6,6 +6,7 @@ export class LoraStore extends EventTarget {
             currentFolder: '',  // "" is the loras root, otherwise "sub/dir"
             filter: '',
             selectedAuthors: [], // author tags toggled on; empty means no author filtering
+            sort: 'name',       // one of SORT_ORDERS
             loading: false,
             error: null
         };
@@ -49,6 +50,11 @@ export class LoraStore extends EventTarget {
                 ? selected.filter(a => a !== author)
                 : [...selected, author]
         });
+    }
+
+    setSort(sort) {
+        if (!SORT_ORDERS.includes(sort) || sort === this.state.sort) return;
+        this.setState({ sort });
     }
 
     setError(error) {
@@ -102,7 +108,21 @@ export class LoraStore extends EventTarget {
         if (selected.length === 0) return loras;
         return loras.filter(l => selected.includes(l.author));
     }
+
+    // `loras` in the current sort order. The backend already sends them sorted by name,
+    // so size ties (and unknown sizes, which go last) keep that order.
+    sortLoras(loras) {
+        const sort = this.state.sort;
+        if (sort === 'name') return loras;
+        const dir = sort === 'size-asc' ? 1 : -1;
+        return [...loras].sort((a, b) => {
+            if (a.size == null || b.size == null) return (a.size == null) - (b.size == null);
+            return dir * (a.size - b.size);
+        });
+    }
 }
+
+export const SORT_ORDERS = ['name', 'size-desc', 'size-asc'];
 
 function isInFolder(loraFolder, folder) {
     return !folder || loraFolder === folder || loraFolder.startsWith(folder + '/');

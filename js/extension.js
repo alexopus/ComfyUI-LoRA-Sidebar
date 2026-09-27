@@ -1,7 +1,7 @@
 import { app } from "/scripts/app.js";
-import { LoraStore } from "./stores/LoraStore.js";
+import { LoraStore, SORT_ORDERS } from "./stores/LoraStore.js";
 import { LoraApi } from "./api/loraApi.js";
-import { LoraDialog } from "./components/LoraDialog.js";
+import { LoraDialog, formatSize } from "./components/LoraDialog.js";
 
 // Load CSS relative to this module, so it works regardless of the install folder name
 const link = document.createElement('link');
@@ -15,7 +15,19 @@ const MAX_CARD_SIZE = 320;
 const CARD_SIZE_STEP = 20;
 const WEIGHT_SETTING = 'Lora Sidebar.Default Weight';
 const EDITING_SETTING = 'Lora Sidebar.Allow Editing';
+const SORT_SETTING = 'Lora Sidebar.Sort Order';
 const FILTER_DELAY_MS = 150;
+
+// Toolbar button look per sort order; clicking cycles through SORT_ORDERS
+const SORT_BUTTONS = {
+    'name': { icon: 'pi pi-sort-alpha-down', label: 'Sorted by name' },
+    'size-desc': { icon: 'pi pi-sort-amount-down', label: 'Sorted by size, largest first' },
+    'size-asc': { icon: 'pi pi-sort-amount-up-alt', label: 'Sorted by size, smallest first' }
+};
+
+function nextSort(sort) {
+    return SORT_ORDERS[(SORT_ORDERS.indexOf(sort) + 1) % SORT_ORDERS.length];
+}
 
 class LoraSidebar {
     constructor() {
@@ -24,6 +36,7 @@ class LoraSidebar {
         this.breadcrumb = null;
         this.filterInput = null;
         this.authorTags = null;
+        this.sortButton = null;
         this.grid = null;
         this.filterTimer = null;
         this.isInitialized = false;
@@ -41,12 +54,15 @@ class LoraSidebar {
         if (updates.currentFolder !== undefined) {
             this.renderBreadcrumb();
         }
+        if (updates.sort !== undefined) {
+            this.renderSortButton();
+        }
 
         // Starting a load only changes the view when there's nothing to show yet ("Loading...");
         // a refresh otherwise keeps the current grid until the new list arrives
         const startedLoadingEmpty = updates.loading === true && this.loras.length === 0;
         if (updates.loras || updates.currentFolder !== undefined || updates.filter !== undefined
-            || updates.selectedAuthors !== undefined || updates.error !== undefined || startedLoadingEmpty) {
+            || updates.selectedAuthors !== undefined || updates.sort !== undefined || updates.error !== undefined || startedLoadingEmpty) {
             this.renderGrid();
         }
     }
@@ -57,6 +73,7 @@ class LoraSidebar {
 
     init() {
         this.cardSize = app.extensionManager.setting.get(CARD_SIZE_SETTING) || 140;
+        this.store.setSort(app.extensionManager.setting.get(SORT_SETTING));
         // Not awaited: the tab shows "Loading..." instead of delaying startup on a slow LoRA drive
         this.loadLoras();
     }
@@ -87,6 +104,7 @@ class LoraSidebar {
 
         this.updateCardSize();
         this.renderBreadcrumb();
+        this.renderSortButton();
         this.renderGrid();
     }
 
@@ -105,10 +123,16 @@ class LoraSidebar {
         zoomButtonGroup.appendChild(this.createButton('pi pi-search-minus', 'Smaller cards', () => this.zoomOut()));
         zoomButtonGroup.appendChild(this.createButton('pi pi-search-plus', 'Larger cards', () => this.zoomIn()));
 
+        const sortButtonGroup = document.createElement('div');
+        sortButtonGroup.className = 'lora-button-group';
+        this.sortButton = this.createButton('', '', () => this.cycleSort());
+        sortButtonGroup.appendChild(this.sortButton);
+
         const refreshButtonGroup = document.createElement('div');
         refreshButtonGroup.className = 'lora-button-group';
         refreshButtonGroup.appendChild(this.createButton('pi pi-refresh', 'Refresh', () => this.loadLoras()));
 
+        rightControls.appendChild(sortButtonGroup);
         rightControls.appendChild(zoomButtonGroup);
         rightControls.appendChild(refreshButtonGroup);
 
@@ -226,7 +250,7 @@ class LoraSidebar {
             ? this.store.search(this.currentFolder, this.filter)
             : this.store.getLorasIn(this.currentFolder);
         this.renderAuthorTags(viewLoras);
-        const loras = this.store.filterByAuthors(viewLoras);
+        const loras = this.store.sortLoras(this.store.filterByAuthors(viewLoras));
 
         if (this.filter) {
             loras.forEach(lora => this.grid.appendChild(this.createLoraCard(lora, true)));
@@ -245,6 +269,20 @@ class LoraSidebar {
         if (subfolders.length === 0 && loras.length === 0) {
             this.renderMessage(viewLoras.length > 0 ? 'No matching LoRAs' : 'No LoRAs found');
         }
+    }
+
+    renderSortButton() {
+        if (!this.sortButton) return;
+        const sort = this.store.state.sort;
+        const next = nextSort(sort);
+        this.sortButton.innerHTML = `<i class="${SORT_BUTTONS[sort].icon}"></i>`;
+        this.sortButton.title = `${SORT_BUTTONS[sort].label} (click: ${SORT_BUTTONS[next].label.toLowerCase()})`;
+    }
+
+    cycleSort() {
+        const next = nextSort(this.store.state.sort);
+        this.store.setSort(next);
+        app.extensionManager.setting.set(SORT_SETTING, next);
     }
 
     renderAuthorTags(viewLoras) {
@@ -314,8 +352,8 @@ class LoraSidebar {
     createLoraCard(lora, showPath) {
         const card = document.createElement('div');
         card.className = 'lora-card';
-        // Just the file name: the dialog shows the full description
-        card.title = lora.name;
+        // Just the file name and size: the dialog shows the full description
+        card.title = lora.size != null ? `${lora.name}\n${formatSize(lora.size)}` : lora.name;
         card.onclick = () => this.openLoraDialog(lora);
 
         const thumb = document.createElement('div');
@@ -533,6 +571,15 @@ app.registerExtension({
                 step: 0.05
             },
             defaultValue: 1
+        },
+        {
+            id: SORT_SETTING,
+            name: "LoRA sort order",
+            type: "combo",
+            options: SORT_ORDERS.map(value => ({ text: SORT_BUTTONS[value].label, value })),
+            defaultValue: 'name',
+            // Fires for the toolbar button and for edits in the Settings dialog
+            onChange: (newValue) => loraSidebar.store.setSort(newValue)
         },
         {
             id: EDITING_SETTING,
