@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-lora-sidebar"
+description = "A ComfyUI extension that adds a sidebar for browsing LoRAs with preview images and descriptions"
+version = "0.1.0"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = ["aiohttp"]
+
+[project.urls]
+Repository = "https://github.com/alexopus/ComfyUI-LoRA-Sidebar"
+
+[tool.comfy]
+PublisherId = "alexopus"
+DisplayName = "ComfyUI LoRA Sidebar"
+Icon = ""

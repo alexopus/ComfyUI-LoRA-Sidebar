@@ -1,0 +1,637 @@
+/* LoRA Sidebar Styles */
+
+.lora-sidebar {
+    --lora-card-size: 140px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    font-family: Arial, sans-serif;
+    color: #fff;
+}
+
+/* Toolbar: breadcrumb + controls */
+.lora-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #444;
+    min-height: 40px;
+}
+
+.lora-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+    min-height: 32px;
+}
+
+.lora-breadcrumb-item {
+    background: transparent;
+    border: none;
+    color: #aaa;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 12px;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lora-breadcrumb-item:hover {
+    background: #444;
+    color: #fff;
+}
+
+.lora-breadcrumb-item.active {
+    color: #fff;
+    font-weight: bold;
+}
+
+.lora-breadcrumb-sep {
+    color: #666;
+    font-size: 12px;
+}
+
+.lora-toolbar-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.lora-button-group {
+    display: flex;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+.lora-btn {
+    background: #333;
+    border: none;
+    color: #ccc;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    height: 32px;
+    transition: all 0.2s ease;
+}
+
+.lora-btn:hover {
+    background: #555;
+    color: #fff;
+}
+
+/* Dividers and rounded ends only within a button group; standalone buttons style their own border */
+.lora-button-group .lora-btn {
+    border-right: 1px solid #444;
+}
+
+.lora-button-group .lora-btn:first-child {
+    border-top-left-radius: 3px;
+    border-bottom-left-radius: 3px;
+}
+
+.lora-button-group .lora-btn:last-child {
+    border-right: none;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+/* Filter */
+.lora-filter-container {
+    padding: 10px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #444;
+}
+
+.lora-filter-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.lora-filter-input {
+    width: 100%;
+    padding: 8px 35px 8px 12px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.lora-filter-input:focus {
+    outline: none;
+    border-color: #666;
+    background: #333;
+}
+
+.lora-filter-input::placeholder {
+    color: #888;
+}
+
+.lora-filter-clear {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lora-filter-clear:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Author tags */
+.lora-author-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #444;
+    max-height: 90px;
+    overflow-y: auto;
+}
+
+.lora-author-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 12px;
+    color: #e8a33d;
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lora-author-tag:hover {
+    border-color: #e8a33d;
+}
+
+.lora-author-tag.active {
+    background: #e8a33d;
+    border-color: #e8a33d;
+    color: #1a1a1a;
+}
+
+.lora-author-tag-count {
+    color: #888;
+}
+
+.lora-author-tag.active .lora-author-tag-count {
+    color: #1a1a1a;
+    opacity: 0.7;
+}
+
+/* Grid */
+.lora-grid-scroll {
+    flex: 1;
+    overflow-y: auto;
+    /* Always reserve the scrollbar's space, so the column count doesn't change when it appears */
+    scrollbar-gutter: stable;
+    padding: 10px;
+}
+
+.lora-grid {
+    display: grid;
+    /* Fixed-width columns so every zoom step resizes the cards (1fr would stretch them
+       to the same width until the column count changes); min() keeps one card within a narrow sidebar */
+    grid-template-columns: repeat(auto-fill, min(var(--lora-card-size), 100%));
+    gap: 8px;
+}
+
+.lora-grid-message {
+    grid-column: 1 / -1;
+    padding: 15px;
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    font-size: 12px;
+}
+
+.lora-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.lora-card:hover {
+    border-color: #4CAF50;
+}
+
+.lora-card-image {
+    aspect-ratio: 3 / 4;
+    background: #1a1a1a;
+    overflow: hidden;
+}
+
+.lora-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Quick action buttons in the image corner, shown on hover */
+.lora-card-actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.lora-card:hover .lora-card-actions {
+    opacity: 1;
+}
+
+.lora-card-actions .lora-btn {
+    height: 26px;
+    padding: 4px 7px;
+    font-size: 12px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.lora-card-actions .lora-btn:hover {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    color: #fff;
+}
+
+.lora-card-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+}
+
+.lora-card-placeholder i {
+    font-size: calc(var(--lora-card-size) / 4);
+}
+
+.lora-folder-card .lora-card-placeholder {
+    color: #c9a227;
+}
+
+.lora-card-name {
+    padding: 6px 8px 2px;
+    font-size: 12px;
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lora-card-author {
+    padding: 0 8px 2px;
+    font-size: 11px;
+    color: #e8a33d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lora-card-desc {
+    padding: 0 8px 6px;
+    font-size: 11px;
+    color: #aaa;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lora-card-name:last-child,
+.lora-card-author:last-child {
+    padding-bottom: 6px;
+}
+
+/* LoRA details dialog */
+.lora-dialog {
+    padding: 0;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #222;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    width: min(1100px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    box-shadow: 2px 2px 20px #000;
+}
+
+.lora-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.lora-dialog-container {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 34px);
+}
+
+.lora-dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px 10px 16px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #444;
+}
+
+.lora-dialog-title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lora-dialog-btn {
+    border: 1px solid #444;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.lora-dialog-title-editor {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.lora-dialog-edit-row {
+    display: flex;
+    gap: 6px;
+}
+
+.lora-dialog-input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 10px;
+    background: #2a2a2a;
+    border: 1px solid #666;
+    border-radius: 4px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.lora-dialog-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.lora-dialog-textarea {
+    min-height: 180px;
+    font-size: 12px;
+    line-height: 1.4;
+    resize: vertical;
+}
+
+.lora-dialog-hint {
+    color: #888;
+    font-size: 11px;
+}
+
+.lora-dialog-body {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    overflow: auto;
+    min-height: 0;
+}
+
+.lora-dialog-image {
+    flex: 1 1 55%;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+
+.lora-dialog-image img {
+    max-width: 100%;
+    max-height: calc(100vh - 140px);
+    object-fit: contain;
+    display: block;
+}
+
+.lora-dialog-image.lora-card-placeholder {
+    align-items: center;
+    min-height: 240px;
+}
+
+.lora-dialog-image.lora-card-placeholder i {
+    font-size: 64px;
+}
+
+.lora-dialog-info {
+    flex: 1 1 45%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 13px;
+}
+
+.lora-dialog-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.lora-dialog-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #333;
+    vertical-align: top;
+    word-break: break-word;
+}
+
+.lora-dialog-label {
+    width: 80px;
+    color: #888;
+    white-space: nowrap;
+}
+
+.lora-dialog-author {
+    color: #e8a33d;
+}
+
+.lora-dialog-copy {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.lora-dialog-copy code {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-size: 12px;
+    word-break: break-word;
+}
+
+.lora-dialog-section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #888;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.lora-dialog-description {
+    margin: 0;
+    padding: 10px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+    color: #ccc;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.lora-dialog-section .lora-dialog-btn {
+    height: 24px;
+    padding: 2px 7px;
+    font-size: 11px;
+}
+
+.lora-dialog-description.empty {
+    color: #666;
+    font-style: italic;
+}
+
+/* Civitai info */
+.lora-dialog-civitai {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.lora-dialog-text-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.lora-dialog-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    color: #4CAF50;
+    text-decoration: none;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 12px;
+}
+
+.lora-dialog-link:hover {
+    text-decoration: underline;
+}
+
+.lora-dialog-civitai-message {
+    color: #aaa;
+    font-size: 12px;
+}
+
+.lora-dialog-civitai-message.error {
+    color: #e57373;
+}
+
+.lora-dialog-warning {
+    color: #e57373;
+    font-weight: bold;
+}
+
+.lora-dialog-long {
+    max-height: 160px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    color: #ccc;
+    font-size: 12px;
+}
+
+.lora-dialog-hash {
+    font-family: monospace;
+    font-size: 11px;
+    color: #aaa;
+    word-break: break-all;
+}
+
+/* Copy button floats over the value's top-right corner on hover, so it takes no column of its own */
+.lora-dialog-copy-row td:last-child {
+    position: relative;
+}
+
+.lora-dialog-copy-btn {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    height: 24px;
+    padding: 2px 7px;
+    font-size: 11px;
+    background: #333;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+/* Keep clear of the scrollbar of long, scrollable values */
+.lora-dialog-copy-row td:has(.lora-dialog-long) .lora-dialog-copy-btn {
+    right: 16px;
+}
+
+.lora-dialog-copy-row:hover .lora-dialog-copy-btn,
+.lora-dialog-copy-btn:focus {
+    opacity: 1;
+}
+
+/* Stack image above info on narrow screens */
+@media (max-width: 700px) {
+    .lora-dialog-body {
+        flex-direction: column;
+    }
+}
