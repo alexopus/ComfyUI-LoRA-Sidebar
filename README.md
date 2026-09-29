@@ -16,6 +16,17 @@ A ComfyUI sidebar for browsing your LoRAs as a grid of preview images, keeping y
 - Rename a LoRA (its preview, description and other `<name>.*` files are renamed with it) and edit its description from the dialog
 - Fetch a LoRA's info from Civitai by its sha256 (name, author, base model, type, recommended strength, trained words, tags, description) with copy buttons and a link to the model page. The hash is read from `<name>.sha256`, or computed and saved there on the first fetch. Fetched info is kept only until ComfyUI restarts; copy what you want to keep into the description
 
+## LoRA Mixer node
+
+The `LoRA Mixer` node (category `loaders`) picks `count` different LoRAs at random from `path` (a folder within the LoRA directory, empty for its root, optionally including its sub-folders) and outputs one line per LoRA, each with a random weight between `min_weight` and `max_weight` and the LoRA's keywords:
+
+```
+<lora:styles/my_lora:0.73>, my_style, retro
+<lora:styles/other_lora:0.51>
+```
+
+Change the `seed` to get a different pick; it's randomized after every run by default. Multi-line keywords are joined with `, ` to keep one line per LoRA. Feed the output into a wildcard or prompt node that understands `<lora:...>` (e.g. Impact Pack's).
+
 ## Preview images and descriptions
 
 Put the files next to the LoRA, using the same base name:

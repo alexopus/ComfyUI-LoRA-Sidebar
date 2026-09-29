@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 - 2026-09-29
+
+### Added
+- `LoRA Mixer` node: picks a number of distinct random LoRAs from a folder (optionally with its sub-folders) and outputs one `<lora:name:weight>, keywords` line each, with a random weight in a given range.
+
 ## 0.2.1 - 2026-09-27
 
 ### Changed

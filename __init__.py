@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import random
 import re
 from aiohttp import web
 from server import PromptServer
@@ -246,6 +247,59 @@ class LoraCatalog:
 
 lora_catalog = LoraCatalog()
 civitai_client = CivitaiClient()
+
+class LoraMixer:
+    """Picks random LoRAs from a folder and outputs one "<lora:name:weight>, keywords" line per LoRA."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        weight = {"min": -MAX_WEIGHT, "max": MAX_WEIGHT, "step": 0.05}
+        return {
+            "required": {
+                "path": ("STRING", {"default": "", "tooltip": "Folder within the LoRA directory, empty for its root"}),
+                "include_subfolders": ("BOOLEAN", {"default": True}),
+                "count": ("INT", {"default": 3, "min": 1, "max": 100, "tooltip": "Number of distinct LoRAs to pick"}),
+                "min_weight": ("FLOAT", {"default": 0.5, **weight}),
+                "max_weight": ("FLOAT", {"default": 1.0, **weight}),
+                # Without a changing input ComfyUI would cache the output and never pick again
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("prompt",)
+    FUNCTION = "mix"
+    CATEGORY = "loaders"
+
+    def mix(self, path, include_subfolders, count, min_weight, max_weight, seed):
+        path = path.replace("\\", "/").strip().strip("/")
+        candidates = []
+        for name in lora_catalog.get_lora_names():
+            rel_name = name.replace(os.sep, "/")
+            folder = rel_name.rsplit("/", 1)[0] if "/" in rel_name else ""
+            if folder == path or (include_subfolders and (not path or folder.startswith(path + "/"))):
+                candidates.append(name)
+        if not candidates:
+            raise ValueError(f"LoRA Mixer: no LoRAs found in '{path}'")
+
+        rng = random.Random(seed)
+        low, high = sorted((min_weight, max_weight))
+        dir_cache = {}
+        lines = []
+        for name in rng.sample(sorted(candidates), min(count, len(candidates))):
+            full_path = folder_paths.get_full_path("loras", name)
+            keywords, _ = parse_description(lora_catalog.read_description(full_path, dir_cache)) if full_path else (None, None)
+            lora = os.path.splitext(name.replace(os.sep, "/"))[0]
+            weight = round(rng.uniform(low, high), 2)
+            line = f"<lora:{lora}:{weight}>"
+            if keywords:
+                # One line per LoRA, so multi-line keywords are joined
+                line += ", " + ", ".join(l.strip() for l in keywords.splitlines() if l.strip())
+            lines.append(line)
+        return ("\n".join(lines),)
+
+NODE_CLASS_MAPPINGS["LoraMixer"] = LoraMixer
+NODE_DISPLAY_NAME_MAPPINGS["LoraMixer"] = "LoRA Mixer"
 
 def error_response(e: Exception):
     status = {LookupError: 404, ValueError: 400, FileExistsError: 409, CivitaiNotFound: 404}.get(type(e), 500)
