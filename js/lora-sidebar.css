@@ -688,6 +688,117 @@
     opacity: 1;
 }
 
+/* Civitai sample images: a bottom bar, the dialog takes the full height while it's shown */
+.lora-dialog.lora-dialog-tall {
+    height: calc(100vh - 32px);
+}
+
+.lora-dialog-tall .lora-dialog-container {
+    height: 100%;
+}
+
+.lora-dialog-tall .lora-dialog-body {
+    flex: 1 1 0;
+}
+
+/* Header, body padding and the 42vh bar leave about 58vh - 120px for the preview */
+.lora-dialog-tall .lora-dialog-image img {
+    max-height: calc(58vh - 120px);
+}
+
+.lora-samples {
+    flex: 0 0 42vh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 16px 12px;
+    background: #1a1a1a;
+    border-top: 1px solid #444;
+    box-sizing: border-box;
+}
+
+.lora-samples-hide {
+    margin-left: auto;
+}
+
+.lora-samples-strip {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.lora-sample {
+    position: relative;
+    flex: none;
+    height: 100%;
+    aspect-ratio: 2 / 3; /* until the real size is known */
+    background: #111;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.lora-sample a,
+.lora-sample img,
+.lora-sample video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Anchored at the bottom, so short settings leave most of the image visible */
+.lora-sample-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 4px;
+    background: rgba(18, 18, 18, 0.92);
+    font-size: 11px;
+    user-select: text;
+    cursor: auto;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.15s ease, visibility 0.15s;
+}
+
+.lora-sample:hover .lora-sample-overlay,
+.lora-sample:focus-within .lora-sample-overlay {
+    visibility: visible;
+    opacity: 1;
+}
+
+.lora-sample-toolbar {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.lora-sample-toolbar .lora-dialog-btn {
+    height: 22px;
+    padding: 2px 6px;
+    font-size: 11px;
+}
+
+.lora-sample-overlay .lora-dialog-table td {
+    padding: 4px 6px;
+}
+
+.lora-sample-overlay .lora-dialog-label {
+    width: 56px;
+}
+
+.lora-sample-overlay .lora-dialog-long {
+    max-height: 120px;
+    font-size: 11px;
+}
+
 /* Stack image above info on narrow screens */
 @media (max-width: 700px) {
     .lora-dialog-body {

@@ -17,6 +17,15 @@ function formatStrength({ strength, minStrength, maxStrength }) {
     return range ? `${strength} (${range})` : String(strength);
 }
 
+// A sample's prompt and settings as A1111 writes them, which most prompt tools can paste
+function formatParameters({ prompt, negativePrompt, settings }) {
+    const lines = [];
+    if (prompt) lines.push(prompt);
+    if (negativePrompt) lines.push(`Negative prompt: ${negativePrompt}`);
+    if (settings.length) lines.push(settings.map(([label, value]) => `${label}: ${value}`).join(', '));
+    return lines.join('\n');
+}
+
 /**
  * Modal with the full preview image, parsed info and the complete description of one LoRA,
  * optionally with renaming and description editing.
@@ -34,6 +43,7 @@ export class LoraDialog {
      * @param options.onCopyText (text) => void
      * @param options.getCachedCivitai (lora) => Promise<info | null>, from this session's cache only
      * @param options.fetchCivitai (lora, refresh) => Promise<info>; may hash the file first
+     * @param options.fetchCivitaiImages (lora, refresh) => Promise<images>; may hash the file first
      */
     constructor(lora, options) {
         this.lora = lora;
@@ -42,6 +52,11 @@ export class LoraDialog {
         this.saving = false;
         this.civitai = { status: 'idle', info: null, error: null }; // status: idle, loading, loaded, error
         this.civitaiSection = null;
+        this.samples = { status: 'idle', images: null, error: null }; // same statuses as civitai
+        this.samplesVisible = false;
+        // Created once and kept across render(), so editing doesn't reload the images or reset the scroll position
+        this.samplesBar = document.createElement('div');
+        this.samplesBar.className = 'lora-samples';
 
         this.element = document.createElement('dialog');
         this.element.className = 'lora-dialog';
@@ -70,11 +85,50 @@ export class LoraDialog {
 
     async loadCachedCivitai() {
         try {
-            const info = await this.options.getCachedCivitai(this.lora);
+            const { info, images } = await this.options.getCachedCivitai(this.lora);
             if (info && this.civitai.status === 'idle') this.setCivitai({ status: 'loaded', info });
+            if (images && this.samples.status === 'idle') {
+                this.samples = { status: 'loaded', images, error: null };
+                this.setSamplesVisible(true);
+            }
         } catch (error) {
             console.error('Error reading cached civitai info:', error);
         }
+    }
+
+    async fetchSamples(refresh = false) {
+        this.setSamples({ status: 'loading' });
+        try {
+            const images = await this.options.fetchCivitaiImages(this.lora, refresh);
+            this.setSamples({ status: 'loaded', images });
+        } catch (error) {
+            this.setSamples({ status: 'error', error: error.message });
+        }
+    }
+
+    setSamples(state) {
+        this.samples = { images: null, error: null, ...state };
+        this.renderSamples();
+    }
+
+    // Shows the bar, fetching the images unless they're already here (or on their way)
+    openSamples() {
+        // Start the fetch first, so the bar's first render already shows it loading
+        if (this.samples.status === 'idle' || this.samples.status === 'error') this.fetchSamples(this.samples.status === 'error');
+        this.setSamplesVisible(true);
+    }
+
+    // The dialog takes the full height while the bar is shown, to give the images room
+    setSamplesVisible(visible) {
+        this.samplesVisible = visible;
+        this.element.classList.toggle('lora-dialog-tall', visible);
+        if (visible) {
+            this.container.appendChild(this.samplesBar);
+        } else {
+            this.samplesBar.remove();
+        }
+        this.renderCivitai(); // its heading has the button that opens the bar
+        this.renderSamples();
     }
 
     async fetchCivitai(refresh = false) {
@@ -108,9 +162,11 @@ export class LoraDialog {
     }
 
     render() {
-        this.container.innerHTML = '';
-        this.container.appendChild(this.createHeader());
-        this.container.appendChild(this.createBody());
+        // The samples bar stays attached: detaching it would reset its scroll position
+        for (const child of [...this.container.children]) {
+            if (child !== this.samplesBar) child.remove();
+        }
+        this.container.prepend(this.createHeader(), this.createBody());
         this.container.querySelector('[data-autofocus]')?.focus();
     }
 
@@ -238,7 +294,11 @@ export class LoraDialog {
         heading.appendChild(label);
         section.appendChild(heading);
 
+        // Independent of the info lookup; hidden while the bar is open (the bar has its own hide button)
+        const samplesButton = this.samplesVisible ? null : this.createTextButton('pi pi-images', 'Sample images', () => this.openSamples());
+
         if (status === 'loaded') {
+            if (samplesButton) heading.appendChild(samplesButton);
             if (info.url) {
                 const link = document.createElement('a');
                 link.className = 'lora-dialog-link';
@@ -253,27 +313,139 @@ export class LoraDialog {
             return;
         }
 
-        const message = document.createElement('div');
-        message.className = 'lora-dialog-civitai-message';
-
         if (status === 'loading') {
-            message.innerHTML = '<i class="pi pi-spin pi-spinner"></i> ';
-            message.append('Looking up on civitai (hashing the file first if there is no .sha256 yet)...');
-            section.appendChild(message);
+            if (samplesButton) heading.appendChild(samplesButton);
+            section.appendChild(this.createLoadingMessage());
             return;
         }
 
-        const fetchButton = document.createElement('button');
-        fetchButton.className = 'lora-btn lora-dialog-btn lora-dialog-text-btn';
-        fetchButton.innerHTML = `<i class="pi pi-cloud-download"></i> ${status === 'error' ? 'Try again' : 'Fetch from Civitai'}`;
-        fetchButton.onclick = () => this.fetchCivitai(status === 'error');
-        heading.appendChild(fetchButton);
+        heading.appendChild(this.createTextButton('pi pi-cloud-download', status === 'error' ? 'Try again' : 'Fetch from Civitai',
+            () => this.fetchCivitai(status === 'error')));
+        if (samplesButton) heading.appendChild(samplesButton);
 
         if (status === 'error') {
-            message.classList.add('error');
+            const message = document.createElement('div');
+            message.className = 'lora-dialog-civitai-message error';
             message.textContent = error;
             section.appendChild(message);
         }
+    }
+
+    createLoadingMessage() {
+        const message = document.createElement('div');
+        message.className = 'lora-dialog-civitai-message';
+        message.innerHTML = '<i class="pi pi-spin pi-spinner"></i> ';
+        message.append('Looking up on civitai (hashing the file first if there is no .sha256 yet)...');
+        return message;
+    }
+
+    // Bottom bar with a horizontally scrolling strip of the civitai sample images
+    renderSamples() {
+        const bar = this.samplesBar;
+        if (!this.samplesVisible) return;
+        bar.innerHTML = '';
+        const { status, images, error } = this.samples;
+
+        const heading = document.createElement('div');
+        heading.className = 'lora-dialog-section';
+        const label = document.createElement('span');
+        label.textContent = status === 'loaded' ? `Sample images (${images.length})` : 'Sample images';
+        heading.appendChild(label);
+        if (status === 'loaded') {
+            heading.appendChild(this.createIconButton('pi pi-refresh', 'Fetch again', () => this.fetchSamples(true)));
+        }
+        const hideButton = this.createIconButton('pi pi-chevron-down', 'Hide sample images', () => this.setSamplesVisible(false));
+        hideButton.classList.add('lora-samples-hide');
+        heading.appendChild(hideButton);
+        bar.appendChild(heading);
+
+        if (status === 'loading' || status === 'idle') {
+            bar.appendChild(this.createLoadingMessage());
+            return;
+        }
+        if (status === 'error') {
+            heading.insertBefore(this.createTextButton('pi pi-cloud-download', 'Try again', () => this.fetchSamples(true)), hideButton);
+            const message = document.createElement('div');
+            message.className = 'lora-dialog-civitai-message error';
+            message.textContent = error;
+            bar.appendChild(message);
+            return;
+        }
+        if (!images.length) {
+            const message = document.createElement('div');
+            message.className = 'lora-dialog-civitai-message';
+            message.textContent = 'Civitai has no sample images for this version.';
+            bar.appendChild(message);
+            return;
+        }
+
+        const strip = document.createElement('div');
+        strip.className = 'lora-samples-strip';
+        // A vertical wheel scrolls the strip sideways, except over the (scrollable) settings
+        strip.addEventListener('wheel', (event) => {
+            if (event.deltaX || !event.deltaY || event.target.closest('.lora-sample-overlay')) return;
+            strip.scrollLeft += event.deltaY;
+            event.preventDefault();
+        }, { passive: false });
+        for (const image of images) strip.appendChild(this.createSample(image));
+        bar.appendChild(strip);
+    }
+
+    createSample(image) {
+        const item = document.createElement('div');
+        item.className = 'lora-sample';
+        if (image.width && image.height) item.style.aspectRatio = `${image.width} / ${image.height}`;
+
+        // The image opens its civitai page; the settings overlay is a sibling, so selecting text doesn't navigate
+        const link = document.createElement('a');
+        link.href = image.page || image.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.title = 'Open on Civitai';
+
+        if (image.type === 'video') {
+            const video = document.createElement('video');
+            video.src = image.thumbnail;
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            video.preload = 'metadata';
+            item.addEventListener('mouseenter', () => video.play().catch(() => {}));
+            item.addEventListener('mouseleave', () => video.pause());
+            link.appendChild(video);
+        } else {
+            const img = document.createElement('img');
+            img.src = image.thumbnail;
+            img.loading = 'lazy';
+            img.alt = '';
+            link.appendChild(img);
+        }
+        item.appendChild(link);
+
+        if (image.prompt || image.negativePrompt || image.settings.length) {
+            item.appendChild(this.createSampleOverlay(image));
+        }
+        return item;
+    }
+
+    // Prompt and settings shown on hover (or keyboard focus); plain text, so it can be selected and copied
+    createSampleOverlay(image) {
+        const overlay = document.createElement('div');
+        overlay.className = 'lora-sample-overlay';
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'lora-sample-toolbar';
+        toolbar.appendChild(this.createIconButton('pi pi-copy', 'Copy all (A1111 parameters format)',
+            () => this.options.onCopyText(formatParameters(image))));
+        overlay.appendChild(toolbar);
+
+        const table = document.createElement('table');
+        table.className = 'lora-dialog-table';
+        this.addCopyRow(table, 'Prompt', image.prompt, 'lora-dialog-long');
+        this.addCopyRow(table, 'Negative', image.negativePrompt, 'lora-dialog-long');
+        for (const [label, value] of image.settings) this.addCopyRow(table, label, value);
+        overlay.appendChild(table);
+        return overlay;
     }
 
     createCivitaiTable(info) {
@@ -399,6 +571,15 @@ export class LoraDialog {
         }
         this.lora = updated;
         this.setEditing(null);
+    }
+
+    createTextButton(iconClass, text, onClick) {
+        const btn = document.createElement('button');
+        btn.className = 'lora-btn lora-dialog-btn lora-dialog-text-btn';
+        btn.innerHTML = `<i class="${iconClass}"></i> `;
+        btn.append(text);
+        btn.onclick = onClick;
+        return btn;
     }
 
     createIconButton(iconClass, title, onClick) {

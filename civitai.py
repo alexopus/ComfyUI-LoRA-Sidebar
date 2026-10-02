@@ -22,8 +22,19 @@ class CivitaiClient:
 
     def __init__(self):
         self.cache = {}  # sha256 -> info dict
+        self.image_cache = {}  # sha256 -> list of sample images
+        self.versions = {}  # sha256 -> raw by-hash response, shared by the info and the images lookup
+        self.hashing = {}  # lora path -> task, so the info and images buttons don't hash the same file twice
 
     async def get_sha256(self, lora_full_path: str) -> str:
+        task = self.hashing.get(lora_full_path)
+        if task is None:
+            task = asyncio.ensure_future(self.read_or_compute_sha256(lora_full_path))
+            self.hashing[lora_full_path] = task
+            task.add_done_callback(lambda _: self.hashing.pop(lora_full_path, None))
+        return await asyncio.shield(task)
+
+    async def read_or_compute_sha256(self, lora_full_path: str) -> str:
         """Reads <base>.sha256 (bare hex, as other tools write it) or computes and saves it.
         A .sha256 older than the LoRA is recomputed and overwritten: the file was probably replaced
         by another version, and the old hash would silently show the wrong civitai model."""
@@ -55,9 +66,7 @@ class CivitaiClient:
             return self.cache[file_hash]
 
         async with aiohttp.ClientSession(timeout=REQUEST_TIMEOUT) as session:
-            version = await fetch_json(session, f"{API_URL}/model-versions/by-hash/{file_hash}")
-            if version is None:
-                raise CivitaiNotFound(f"No model on civitai with sha256 {file_hash}")
+            version = await self.get_version(session, file_hash, refresh)
             model_id = version.get("modelId")
             model, settings = (None, None)
             if model_id:
@@ -71,6 +80,27 @@ class CivitaiClient:
         info = build_info(file_hash, version, model or {}, settings or {})
         self.cache[file_hash] = info
         return info
+
+    async def get_images(self, lora_full_path: str, refresh: bool = False) -> list[dict]:
+        """The version's sample images with their prompt and generation settings (the by-hash response has them)."""
+        file_hash = await self.get_sha256(lora_full_path)
+        if not refresh and file_hash in self.image_cache:
+            return self.image_cache[file_hash]
+
+        async with aiohttp.ClientSession(timeout=REQUEST_TIMEOUT) as session:
+            version = await self.get_version(session, file_hash, refresh)
+        images = build_images(version)
+        self.image_cache[file_hash] = images
+        return images
+
+    async def get_version(self, session: aiohttp.ClientSession, file_hash: str, refresh: bool) -> dict:
+        if not refresh and file_hash in self.versions:
+            return self.versions[file_hash]
+        version = await fetch_json(session, f"{API_URL}/model-versions/by-hash/{file_hash}")
+        if version is None:
+            raise CivitaiNotFound(f"No model on civitai with sha256 {file_hash}")
+        self.versions[file_hash] = version
+        return version
 
 def compute_sha256(path: str) -> str:
     sha256 = hashlib.sha256()
@@ -148,6 +178,59 @@ def build_info(file_hash: str, version: dict, model: dict, settings: dict) -> di
         "description": html_to_text(model.get("description")),
         "versionDescription": html_to_text(version.get("description")),
     }
+
+# Generation settings shown for a sample image: label -> meta keys, first present wins
+# (A1111/Forge uploads use "Schedule type", civitai's own generator "scheduler", ...)
+SAMPLE_SETTINGS = [
+    ("Model", ("Model",)),
+    ("Sampler", ("sampler",)),
+    ("Scheduler", ("Schedule type", "scheduler")),
+    ("Steps", ("steps",)),
+    ("CFG", ("cfgScale",)),
+    ("Seed", ("seed",)),
+    ("Size", ("Size",)),
+    ("Clip skip", ("clipSkip", "Clip skip")),
+    ("Denoise", ("Denoising strength", "denoise")),
+]
+# Thumbnail size for the sample strip, set by the "width=" segment of the url. 450 is what civitai's own gallery
+# uses, so those are likely cached on their side; enough for the ~300px wide images in the bar
+THUMBNAIL_WIDTH = 450
+
+def build_images(version: dict) -> list[dict]:
+    images = []
+    for image in version.get("images") or []:
+        url = image.get("url")
+        if not url:
+            continue
+        meta = image.get("meta") or {}
+        settings = []
+        for label, keys in SAMPLE_SETTINGS:
+            value = next((meta[k] for k in keys if meta.get(k) not in (None, "")), None)
+            if value is not None:
+                settings.append([label, str(value)])
+        loras = [
+            f'{r["name"]}:{r["weight"]}' if r.get("weight") is not None else r["name"]
+            for r in meta.get("resources") or []
+            if isinstance(r, dict) and r.get("type") == "lora" and r.get("name")
+        ]
+        if loras:
+            settings.append(["LoRAs", ", ".join(loras)])
+        # The file name of the url is the image id, e.g. ".../original=true/64739376.jpeg"
+        image_id = os.path.splitext(url.rsplit("/", 1)[-1])[0]
+        is_video = image.get("type") == "video"
+        images.append({
+            "url": url,
+            # Videos are played from the original url, as rgthree does
+            "thumbnail": url if is_video else url.replace("/original=true/", f"/width={THUMBNAIL_WIDTH}/"),
+            "page": f"{SITE_URL}/images/{image_id}" if image_id.isdigit() else None,
+            "type": "video" if is_video else "image",
+            "width": image.get("width"),
+            "height": image.get("height"),
+            "prompt": meta.get("prompt") or "",
+            "negativePrompt": meta.get("negativePrompt") or "",
+            "settings": settings,
+        })
+    return images
 
 def html_to_text(value: str | None) -> str:
     """Civitai descriptions are HTML; reduce them to plain text with line breaks kept."""

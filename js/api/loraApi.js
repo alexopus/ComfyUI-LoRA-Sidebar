@@ -19,11 +19,18 @@ export class LoraApi {
         await LoraApi.post('/lora_sidebar/description', { name, description }, 'Failed to save description');
     }
 
-    // Civitai info already fetched this session, or null; never hashes or hits the network
-    static async getCachedCivitaiInfo(name) {
+    // Civitai info and sample images already fetched this session ({info, images}, each null if not);
+    // never hashes or hits the network
+    static async getCachedCivitai(name) {
         const response = await fetch(`/lora_sidebar/civitai/cached?name=${encodeURIComponent(name)}`);
         const data = await LoraApi.readJson(response, 'Failed to read cached civitai info');
-        return data.info || null;
+        return { info: data.info || null, images: data.images || null };
+    }
+
+    // The civitai sample images with their prompt and settings; hashes the LoRA first if needed
+    static async fetchCivitaiImages(name, refresh = false) {
+        const data = await LoraApi.post('/lora_sidebar/civitai/images', { name, refresh }, 'Failed to fetch civitai images');
+        return data.images || [];
     }
 
     // Looks the LoRA up on civitai, hashing it first (and saving <base>.sha256) if needed

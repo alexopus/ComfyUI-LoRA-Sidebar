@@ -361,15 +361,18 @@ async def get_cached_civitai_info(request):
     full_path = lora_catalog.resolve_known(request.query.get("name", ""))
     sha_path = os.path.splitext(full_path)[0] + ".sha256" if full_path else None
     if not sha_path or not os.path.isfile(sha_path):
-        return web.json_response({"info": None})
+        return web.json_response({"info": None, "images": None})
     try:
         with open(sha_path, 'r', encoding='utf-8') as f:
             file_hash = f.read().strip().lower()
     except (OSError, UnicodeDecodeError) as e:
         # Not a hash we could have cached anyway; the fetch will report the details
         print(f"[Lora Sidebar] Could not read {sha_path}: {e}")
-        return web.json_response({"info": None})
-    return web.json_response({"info": civitai_client.cache.get(file_hash)})
+        return web.json_response({"info": None, "images": None})
+    return web.json_response({
+        "info": civitai_client.cache.get(file_hash),
+        "images": civitai_client.image_cache.get(file_hash),
+    })
 
 @PromptServer.instance.routes.post("/lora_sidebar/civitai")
 async def fetch_civitai_info(request):
@@ -380,6 +383,18 @@ async def fetch_civitai_info(request):
             raise LookupError(f"Unknown LoRA: {data.get('name', '')}")
         info = await civitai_client.get_info(full_path, refresh=bool(data.get("refresh")))
         return web.json_response({"info": info})
+    except Exception as e:
+        return error_response(e)
+
+@PromptServer.instance.routes.post("/lora_sidebar/civitai/images")
+async def fetch_civitai_images(request):
+    try:
+        data = await read_body(request)
+        full_path = lora_catalog.resolve_known(data.get("name", ""))
+        if not full_path:
+            raise LookupError(f"Unknown LoRA: {data.get('name', '')}")
+        images = await civitai_client.get_images(full_path, refresh=bool(data.get("refresh")))
+        return web.json_response({"images": images})
     except Exception as e:
         return error_response(e)
 
