@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 - 2026-10-02
+
+### Changed
+- The details dialog is wider (up to 1600px instead of 1100px), giving the sample images strip more room.
+
 ## 0.4.0 - 2026-10-02
 
 ### Added

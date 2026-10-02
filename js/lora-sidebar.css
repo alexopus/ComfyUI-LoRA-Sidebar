@@ -401,7 +401,7 @@
     background: #222;
     color: #fff;
     font-family: Arial, sans-serif;
-    width: min(1100px, calc(100vw - 32px));
+    width: min(1600px, calc(100vw - 32px));
     max-height: calc(100vh - 32px);
     box-shadow: 2px 2px 20px #000;
 }
