@@ -15,6 +15,7 @@ A ComfyUI sidebar for browsing your LoRAs as a grid of preview images, keeping y
 - Click a card to open a details dialog with the full preview image, keywords, weight and the complete description
 - Rename a LoRA (its preview, description and other `<name>.*` files are renamed with it) and edit its description from the dialog
 - Fetch a LoRA's info from Civitai by its sha256 (name, author, base model, type, recommended strength, trained words, tags, description) with copy buttons and a link to the model page. The hash is read from `<name>.sha256`, or computed and saved there on the first fetch. Fetched info is kept only until ComfyUI restarts; copy what you want to keep into the description
+- Show the Civitai sample images of a LoRA in a scrollable bar at the bottom of the details dialog. Hovering an image shows its prompt, negative prompt and generation settings (model, sampler, steps, CFG, seed, size, ...), selectable and with copy buttons, including one that copies everything in A1111's parameters format
 
 ## LoRA Mixer node
 

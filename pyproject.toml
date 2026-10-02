@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-lora-sidebar"
 description = "A ComfyUI extension that adds a sidebar for browsing LoRAs with preview images and descriptions"
-version = "0.3.0"
+version = "0.4.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = ["aiohttp"]
