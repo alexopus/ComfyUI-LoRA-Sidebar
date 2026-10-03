@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1 - 2026-10-03
+
+### Fixed
+- The copy buttons in a sample image's settings overlay are smaller, so they fit within one-line rows.
+
 ## 0.5.0 - 2026-10-03
 
 ### Added
