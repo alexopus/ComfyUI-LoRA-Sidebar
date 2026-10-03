@@ -44,6 +44,7 @@ export class LoraDialog {
      * @param options.getCachedCivitai (lora) => Promise<info | null>, from this session's cache only
      * @param options.fetchCivitai (lora, refresh) => Promise<info>; may hash the file first
      * @param options.fetchCivitaiImages (lora, refresh) => Promise<images>; may hash the file first
+     * @param options.onSetPreview (lora, image) => Promise<updated lora>; makes a sample image the preview
      */
     constructor(lora, options) {
         this.lora = lora;
@@ -425,6 +426,13 @@ export class LoraDialog {
         if (image.prompt || image.negativePrompt || image.settings.length) {
             item.appendChild(this.createSampleOverlay(image));
         }
+        // A preview has to be a still image
+        if (this.options.canEdit && image.type === 'image') {
+            const coverButton = this.createIconButton('pi pi-image', 'Use as preview (the current one is kept as "<name>_old.*")',
+                () => this.setPreview(image, coverButton));
+            coverButton.classList.add('lora-sample-cover-btn');
+            item.appendChild(coverButton);
+        }
         return item;
     }
 
@@ -551,6 +559,29 @@ export class LoraDialog {
         description.className = 'lora-dialog-description' + (this.lora.description ? '' : ' empty');
         description.textContent = this.lora.description || 'No description yet';
         parent.appendChild(description);
+    }
+
+    // Swaps only the preview image afterwards, so an edit in progress isn't reset
+    async setPreview(image, button) {
+        if (this.saving) return;
+        this.saving = true;
+        const icon = button.querySelector('i');
+        icon.className = 'pi pi-spin pi-spinner';
+        let updated;
+        try {
+            updated = await this.options.onSetPreview(this.lora, image);
+        } catch {
+            return; // the callback reports the error
+        } finally {
+            this.saving = false;
+            icon.className = 'pi pi-image';
+        }
+        if (!updated) {
+            this.close(); // the LoRA is gone from the refreshed list
+            return;
+        }
+        this.lora = updated;
+        this.container.querySelector('.lora-dialog-image')?.replaceWith(this.createImage());
     }
 
     // Runs a save callback; on success shows the updated LoRA, on failure stays in edit mode

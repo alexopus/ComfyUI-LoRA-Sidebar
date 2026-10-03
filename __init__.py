@@ -230,6 +230,36 @@ class LoraCatalog:
         folder_paths.filename_list_cache.pop("loras", None)
         return new_lora_name
 
+    def set_preview(self, lora_full_path: str, data: bytes, ext: str):
+        """Saves data as the LoRA's preview "<base><ext>". Every existing preview moves to "<base>_old<suffix>"
+        (numbered if that exists), so none of them takes precedence over the new one and nothing is lost."""
+        base_path = os.path.splitext(lora_full_path)[0]
+        moves = []
+        for suffix in IMAGE_SUFFIXES:
+            src = base_path + suffix
+            if not os.path.isfile(src):
+                continue
+            dst, n = f"{base_path}_old{suffix}", 2
+            while os.path.exists(dst) or any(dst == d for _, d in moves):
+                dst, n = f"{base_path}_old{n}{suffix}", n + 1
+            moves.append((src, dst))
+
+        done = []
+        try:
+            for src, dst in moves:
+                os.rename(src, dst)
+                done.append((src, dst))
+            with open(base_path + ext, 'wb') as f:
+                f.write(data)
+        except OSError:
+            # Put the old previews back, so a failure doesn't leave the LoRA without one
+            for src, dst in reversed(done):
+                try:
+                    os.rename(dst, src)
+                except OSError as e:
+                    print(f"[Lora Sidebar] Could not roll back preview move {dst} -> {src}: {e}")
+            raise
+
     def write_description(self, lora_name: str, description: str):
         """Writes <base>.txt; an empty description removes the file."""
         full_path = self.resolve_known(lora_name)
@@ -395,6 +425,19 @@ async def fetch_civitai_images(request):
             raise LookupError(f"Unknown LoRA: {data.get('name', '')}")
         images = await civitai_client.get_images(full_path, refresh=bool(data.get("refresh")))
         return web.json_response({"images": images})
+    except Exception as e:
+        return error_response(e)
+
+@PromptServer.instance.routes.post("/lora_sidebar/civitai/preview")
+async def set_civitai_preview(request):
+    try:
+        data = await read_body(request)
+        full_path = lora_catalog.resolve_known(data.get("name", ""))
+        if not full_path:
+            raise LookupError(f"Unknown LoRA: {data.get('name', '')}")
+        image, ext = await civitai_client.download_sample(full_path, data.get("url"))
+        await asyncio.to_thread(lora_catalog.set_preview, full_path, image, ext)
+        return web.json_response({"success": True})
     except Exception as e:
         return error_response(e)
 

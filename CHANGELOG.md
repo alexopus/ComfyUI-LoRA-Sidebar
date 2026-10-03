@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0 - 2026-10-03
+
+### Added
+- `Use as preview` button on each Civitai sample image (still images only, shown when editing is allowed): downloads the image and makes it the LoRA's preview. The current preview is renamed to `<name>_old.<ext>` (`_old2`, ... if that exists), so it isn't lost.
+
 ## 0.4.1 - 2026-10-02
 
 ### Changed

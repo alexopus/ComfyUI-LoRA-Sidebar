@@ -39,6 +39,11 @@ export class LoraApi {
         return data.info;
     }
 
+    // Makes a sample image (its thumbnail url) the LoRA's preview; existing previews are kept as "<name>_old.*"
+    static async setCivitaiPreview(name, url) {
+        await LoraApi.post('/lora_sidebar/civitai/preview', { name, url }, 'Failed to set preview');
+    }
+
     static async post(url, body, fallbackError) {
         const response = await fetch(url, {
             method: 'POST',

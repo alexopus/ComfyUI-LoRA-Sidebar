@@ -775,6 +775,25 @@
     opacity: 1;
 }
 
+/* Top-left, clear of the overlay's copy-all button; above the overlay when that fills the image */
+.lora-sample-cover-btn {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 1;
+    height: 26px;
+    padding: 2px 7px;
+    font-size: 12px;
+    background: #333;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.lora-sample:hover .lora-sample-cover-btn,
+.lora-sample:focus-within .lora-sample-cover-btn {
+    opacity: 1;
+}
+
 .lora-sample-toolbar {
     display: flex;
     justify-content: flex-end;

@@ -93,6 +93,20 @@ class CivitaiClient:
         self.image_cache[file_hash] = images
         return images
 
+    async def download_sample(self, lora_full_path: str, url: str) -> tuple[bytes, str]:
+        """Downloads one of this LoRA's sample image thumbnails; returns (data, file extension).
+        Only urls from its sample list are accepted, so the endpoint can't be used to fetch arbitrary urls."""
+        images = await self.get_images(lora_full_path)
+        if not any(i["thumbnail"] == url and i["type"] == "image" for i in images):
+            raise ValueError("Not a sample image of this LoRA")
+        async with aiohttp.ClientSession(timeout=REQUEST_TIMEOUT) as session:
+            async with session.get(url, headers={"User-Agent": "ComfyUI-Lora-Sidebar"}) as response:
+                response.raise_for_status()
+                ext = IMAGE_CONTENT_TYPES.get(response.content_type)
+                if not ext:
+                    raise ValueError(f"Unsupported image type: {response.content_type}")
+                return await response.read(), ext
+
     async def get_version(self, session: aiohttp.ClientSession, file_hash: str, refresh: bool) -> dict:
         if not refresh and file_hash in self.versions:
             return self.versions[file_hash]
@@ -195,6 +209,8 @@ SAMPLE_SETTINGS = [
 # Thumbnail size for the sample strip, set by the "width=" segment of the url. 450 is what civitai's own gallery
 # uses, so those are likely cached on their side; enough for the ~300px wide images in the bar
 THUMBNAIL_WIDTH = 450
+# Extension a downloaded sample is saved with, by the content type civitai serves it as
+IMAGE_CONTENT_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
 
 def build_images(version: dict) -> list[dict]:
     images = []

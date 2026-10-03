@@ -486,7 +486,9 @@ class LoraSidebar {
             onRename: (l, title) => this.saveLoraEdit('Rename failed',
                 () => LoraApi.renameLora(l.name, title)),
             onSaveDescription: (l, text) => this.saveLoraEdit('Saving description failed',
-                () => LoraApi.saveDescription(l.name, text).then(() => l.name))
+                () => LoraApi.saveDescription(l.name, text).then(() => l.name)),
+            onSetPreview: (l, image) => this.saveLoraEdit('Setting preview failed',
+                () => LoraApi.setCivitaiPreview(l.name, image.thumbnail).then(() => l.name))
         }).show();
     }
 
