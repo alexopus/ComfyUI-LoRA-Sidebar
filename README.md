@@ -10,17 +10,18 @@ A ComfyUI sidebar for browsing your LoRAs as a grid of preview images, keeping y
 - Placeholder tile when a LoRA has no preview image
 - Filter by name or description (searches the current folder and everything below it)
 - Author shown under the name and toggleable author tags to filter the current view, when the file name ends with `_[author]` (e.g. `Painterly_Style_[someone].safetensors`)
+- Sort by name or by file size (largest or smallest first) from the toolbar's sort dropdown; folders always stay alphabetical and on top. The card tooltip shows the file name and size
 - Adjustable card size (saved in ComfyUI settings)
 - Hover a card and use its copy button to copy the LoRA in Impact Pack wildcard syntax, e.g. `<lora:styles/my_lora:0.6>, my keyword`
 - Click a card to open a details dialog with the full preview image, keywords, weight and the complete description
 - Rename a LoRA (its preview, description and other `<name>.*` files are renamed with it) and edit its description from the dialog
 - Fetch a LoRA's info from Civitai by its sha256 (name, author, base model, type, recommended strength, trained words, tags, description) with copy buttons and a link to the model page. The hash is read from `<name>.sha256`, or computed and saved there on the first fetch. Fetched info is kept only until ComfyUI restarts; copy what you want to keep into the description
 - Show the Civitai sample images of a LoRA in a scrollable bar at the bottom of the details dialog. Hovering an image shows its prompt, negative prompt and generation settings (model, sampler, steps, CFG, seed, size, ...), selectable and with copy buttons, including one that copies everything in A1111's parameters format
-- Make a Civitai sample image the LoRA's preview with its `Use as preview` button. The current preview is kept as `<name>_old.<ext>`
+- Make a Civitai sample image the LoRA's preview with its `Use as preview` button (still images, when editing is allowed). The current preview is kept as `<name>_old.<ext>`
 
 ## LoRA Mixer node
 
-The `LoRA Mixer` node (category `loaders`) picks between `min_count` and `max_count` (random each run) different LoRAs at random from `path` (a folder within the LoRA directory, empty for its root, optionally including its sub-folders) and outputs one line per LoRA, each with a random weight between `min_weight` and `max_weight` and the LoRA's keywords:
+The `LoRA Mixer` node (category `loaders`) picks a random number (between `min_count` and `max_count`) of different LoRAs at random from `path` (a folder within the LoRA directory, empty for its root, optionally including its sub-folders) and outputs one line per LoRA, each with a random weight between `min_weight` and `max_weight` and the LoRA's keywords:
 
 ```
 <lora:styles/my_lora:0.73>, my_style, retro
@@ -57,6 +58,7 @@ The weight is the first number on its line, so a range such as `weight: 0.6-0.9`
 
 - `LoRA Card Size`: card width in the grid (also changed with the zoom buttons)
 - `LoRA weight used when copying`: weight for LoRAs whose description has none
+- `LoRA sort order`: name, size (largest first) or size (smallest first); also set from the toolbar's sort dropdown
 - `Allow renaming LoRAs and editing descriptions in the LoRA dialog`: on by default. Turning it off hides the edit controls, but the extension's rename and save endpoints stay reachable for anyone who can access your ComfyUI server
 
 ## Installation
