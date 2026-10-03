@@ -288,7 +288,8 @@ class LoraMixer:
             "required": {
                 "path": ("STRING", {"default": "", "tooltip": "Folder within the LoRA directory, empty for its root"}),
                 "include_subfolders": ("BOOLEAN", {"default": True}),
-                "count": ("INT", {"default": 3, "min": 1, "max": 100, "tooltip": "Number of distinct LoRAs to pick"}),
+                "min_count": ("INT", {"default": 1, "min": 1, "max": 100, "tooltip": "Fewest distinct LoRAs to pick"}),
+                "max_count": ("INT", {"default": 3, "min": 1, "max": 100, "tooltip": "Most distinct LoRAs to pick"}),
                 "min_weight": ("FLOAT", {"default": 0.5, **weight}),
                 "max_weight": ("FLOAT", {"default": 1.0, **weight}),
                 # Without a changing input ComfyUI would cache the output and never pick again
@@ -301,7 +302,7 @@ class LoraMixer:
     FUNCTION = "mix"
     CATEGORY = "loaders"
 
-    def mix(self, path, include_subfolders, count, min_weight, max_weight, seed):
+    def mix(self, path, include_subfolders, min_count, max_count, min_weight, max_weight, seed):
         path = path.replace("\\", "/").strip().strip("/")
         candidates = []
         for name in lora_catalog.get_lora_names():
@@ -313,6 +314,7 @@ class LoraMixer:
             raise ValueError(f"LoRA Mixer: no LoRAs found in '{path}'")
 
         rng = random.Random(seed)
+        count = rng.randint(*sorted((min_count, max_count)))
         low, high = sorted((min_weight, max_weight))
         dir_cache = {}
         lines = []

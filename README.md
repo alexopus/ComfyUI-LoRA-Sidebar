@@ -20,7 +20,7 @@ A ComfyUI sidebar for browsing your LoRAs as a grid of preview images, keeping y
 
 ## LoRA Mixer node
 
-The `LoRA Mixer` node (category `loaders`) picks `count` different LoRAs at random from `path` (a folder within the LoRA directory, empty for its root, optionally including its sub-folders) and outputs one line per LoRA, each with a random weight between `min_weight` and `max_weight` and the LoRA's keywords:
+The `LoRA Mixer` node (category `loaders`) picks between `min_count` and `max_count` (random each run) different LoRAs at random from `path` (a folder within the LoRA directory, empty for its root, optionally including its sub-folders) and outputs one line per LoRA, each with a random weight between `min_weight` and `max_weight` and the LoRA's keywords:
 
 ```
 <lora:styles/my_lora:0.73>, my_style, retro

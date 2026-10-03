@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 - 2026-10-03
+
+### Changed
+- LoRA Mixer: the `count` input is replaced by `min_count` and `max_count`; each run picks a random number of LoRAs in that range. Saved workflows using the node need its inputs re-checked, since the widget values shift by one.
+
 ## 0.5.1 - 2026-10-03
 
 ### Fixed
