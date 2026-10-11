@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 - 2026-10-11
+
+### Added
+- Keywords and weight inputs below the description in the details dialog (shown when editing is allowed), kept in sync with the description's `keywords:` / `weight:` lines. While the description is being edited they follow the text and are saved with it; otherwise a changed input saves the description right away.
+- Each input has a button that takes its value from the fetched Civitai info (trained words / recommended strength). An existing `keywords:` / `weight:` line is updated; a description without such lines is kept below the new line as notes.
+
 ## 0.6.0 - 2026-10-03
 
 ### Changed

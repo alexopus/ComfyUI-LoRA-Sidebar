@@ -1,7 +1,14 @@
 import { LoraApi } from "../api/loraApi.js";
+import { readFields, setField } from "../description.js";
 
 // Civitai model types that are expected in the loras folder; anything else is flagged
 const LORA_TYPES = ['LORA', 'LoCon', 'DoRA'];
+
+// The description's keywords / weight inputs, and what their button takes from the civitai info
+const FIELDS = [
+    { label: 'keywords', title: 'Keywords', source: 'trained words', fromCivitai: (info) => info.trainedWords.join(', ') },
+    { label: 'weight', title: 'Weight', source: 'strength', fromCivitai: (info) => formatStrength(info) },
+];
 
 // e.g. "218 MB", "1.6 GB"
 export function formatSize(bytes) {
@@ -53,6 +60,7 @@ export class LoraDialog {
         this.saving = false;
         this.civitai = { status: 'idle', info: null, error: null }; // status: idle, loading, loaded, error
         this.civitaiSection = null;
+        this.fieldButtons = []; // { button, field } of the keywords / weight inputs
         this.samples = { status: 'idle', images: null, error: null }; // same statuses as civitai
         this.samplesVisible = false;
         // Created once and kept across render(), so editing doesn't reload the images or reset the scroll position
@@ -145,6 +153,7 @@ export class LoraDialog {
     setCivitai(state) {
         this.civitai = { info: null, error: null, ...state };
         this.renderCivitai();
+        this.updateFieldButtons();
     }
 
     show() {
@@ -548,6 +557,7 @@ export class LoraDialog {
             heading.appendChild(this.createIconButton('pi pi-check', 'Save (Ctrl+Enter)', save));
             heading.appendChild(this.createIconButton('pi pi-undo', 'Cancel (Esc)', () => this.setEditing(null)));
             parent.appendChild(textarea);
+            parent.appendChild(this.createFields(textarea, save));
             return;
         }
 
@@ -559,6 +569,89 @@ export class LoraDialog {
         description.className = 'lora-dialog-description' + (this.lora.description ? '' : ' empty');
         description.textContent = this.lora.description || 'No description yet';
         parent.appendChild(description);
+        if (canEdit) parent.appendChild(this.createFields());
+    }
+
+    // Keywords and weight inputs, two-way synced with the description's "keywords:" / "weight:" lines.
+    // While the description is edited they follow its textarea (and it them), saved with it;
+    // otherwise a changed input (Enter or leaving it) or its civitai button saves the description right away
+    createFields(textarea = null, save = null) {
+        const fields = document.createElement('div');
+        fields.className = 'lora-dialog-fields';
+
+        const getText = () => textarea ? textarea.value : this.lora.description;
+        const inputs = {};
+        const sync = (except) => {
+            const values = readFields(getText());
+            for (const [label, input] of Object.entries(inputs)) {
+                if (input !== except) input.value = values[label];
+            }
+        };
+        const apply = (label, value, options) => {
+            if (textarea) {
+                textarea.value = setField(getText(), label, value, options);
+                sync(inputs[label]);
+            } else if (value.trim() !== readFields(getText())[label]) {
+                this.runEdit(() => this.options.onSaveDescription(this.lora, setField(getText(), label, value, options)));
+            }
+        };
+
+        this.fieldButtons = [];
+        for (const field of FIELDS) {
+            const { label } = field;
+            const row = document.createElement('label');
+            row.className = 'lora-dialog-edit-row lora-dialog-field';
+
+            const name = document.createElement('span');
+            name.className = 'lora-dialog-label';
+            name.textContent = field.title;
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'lora-dialog-input';
+            if (label === 'weight') input.placeholder = `${this.options.defaultWeight} (default)`;
+            inputs[label] = input;
+
+            if (textarea) {
+                input.addEventListener('input', () => apply(label, input.value));
+            } else {
+                input.addEventListener('change', () => apply(label, input.value));
+            }
+            input.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' || event.isComposing) return;
+                if (save) save(); else apply(label, input.value);
+            });
+
+            // Updates an existing "keywords:" / "weight:" line; a text without such lines moves down as notes
+            const button = this.createIconButton('pi pi-cloud-download', '', () => {
+                const value = field.fromCivitai(this.civitai.info);
+                input.value = value;
+                apply(label, value, { keepBody: true });
+            });
+            this.fieldButtons.push({ button, field });
+
+            row.append(name, input, button);
+            fields.appendChild(row);
+        }
+
+        textarea?.addEventListener('input', () => sync());
+        sync();
+        this.updateFieldButtons();
+        return fields;
+    }
+
+    // The civitai buttons of the keywords / weight inputs only work once the info is loaded and has a value
+    updateFieldButtons() {
+        const { status, info } = this.civitai;
+        for (const { button, field } of this.fieldButtons) {
+            const value = status === 'loaded' ? field.fromCivitai(info) : '';
+            button.disabled = !value;
+            if (value) {
+                button.title = `Use civitai's ${field.source}: ${value}`;
+            } else {
+                button.title = status === 'loaded' ? `Civitai has no ${field.source} for this LoRA` : 'Fetch the civitai info first';
+            }
+        }
     }
 
     // Swaps only the preview image afterwards, so an edit in progress isn't reset

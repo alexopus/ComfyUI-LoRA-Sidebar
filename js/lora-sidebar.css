@@ -479,6 +479,39 @@
     resize: vertical;
 }
 
+/* Keywords / weight inputs below the description */
+.lora-dialog-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.lora-dialog-field {
+    align-items: center;
+}
+
+.lora-dialog-field .lora-dialog-label {
+    width: 70px;
+    flex-shrink: 0;
+}
+
+.lora-dialog-field .lora-dialog-input {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.lora-dialog-field .lora-dialog-btn {
+    height: 26px;
+    padding: 2px 8px;
+    font-size: 12px;
+}
+
+.lora-dialog-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}
+
 .lora-dialog-hint {
     color: #888;
     font-size: 11px;
